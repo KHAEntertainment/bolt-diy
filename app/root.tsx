@@ -6,6 +6,7 @@ import { themeStore } from './lib/stores/theme';
 import { stripIndents } from './utils/stripIndent';
 import { createHead } from 'remix-island';
 import { useEffect } from 'react';
+import { supabase } from '~/lib/auth/supabase.client';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { ClientOnly } from 'remix-utils/client-only';
@@ -111,6 +112,37 @@ export default function App() {
       .catch((error) => {
         logStore.logError('Failed to initialize debug logging', error);
       });
+  }, []);
+
+  // Sync Supabase auth state to server HttpOnly cookies
+  useEffect(() => {
+    const { data: subscription } = supabase.auth.onAuthStateChange(async (event, session) => {
+      try {
+        if (session?.access_token && session?.refresh_token) {
+          const res = await fetch('/api/auth/session', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              access_token: session.access_token,
+              refresh_token: session.refresh_token,
+              expires_in: session.expires_in ?? 3600,
+            }),
+          });
+          if (!res.ok) {
+            // Server rejected (e.g., registration locked): sign out client
+            await supabase.auth.signOut();
+          }
+        } else if (event === 'SIGNED_OUT') {
+          await fetch('/api/auth/session', { method: 'DELETE' });
+        }
+      } catch (error) {
+        console.error('Failed to sync auth session:', error);
+      }
+    });
+
+    return () => {
+      subscription.subscription.unsubscribe();
+    };
   }, []);
 
   return (

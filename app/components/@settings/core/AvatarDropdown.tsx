@@ -1,6 +1,7 @@
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { motion } from 'framer-motion';
 import { useStore } from '@nanostores/react';
+import { useEffect, useState } from 'react';
 import { classNames } from '~/utils/classNames';
 import { profileStore } from '~/lib/stores/profile';
 import type { TabType, Profile } from './types';
@@ -11,6 +12,30 @@ interface AvatarDropdownProps {
 
 export const AvatarDropdown = ({ onSelectTab }: AvatarDropdownProps) => {
   const profile = useStore(profileStore) as Profile;
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+
+  useEffect(() => {
+    let unsubscribe: (() => void) | null = null;
+
+    (async () => {
+      try {
+        const { supabase } = await import('~/lib/auth/supabase.client');
+        const { data } = await supabase.auth.getUser();
+        setUserEmail(data.user?.email ?? null);
+
+        const sub = supabase.auth.onAuthStateChange((_event, session) => {
+          setUserEmail(session?.user?.email ?? null);
+        });
+        unsubscribe = () => sub.data.subscription.unsubscribe();
+      } catch {
+        // ignore
+      }
+    })();
+
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, []);
 
   return (
     <DropdownMenu.Root>
@@ -71,9 +96,7 @@ export const AvatarDropdown = ({ onSelectTab }: AvatarDropdownProps) => {
               )}
             </div>
             <div className="flex-1 min-w-0">
-              <div className="font-medium text-sm text-gray-900 dark:text-white truncate">
-                {profile?.username || 'Guest User'}
-              </div>
+              <div className="font-medium text-sm text-gray-900 dark:text-white truncate">{userEmail || profile?.username || 'Guest User'}</div>
               {profile?.bio && <div className="text-xs text-gray-500 dark:text-gray-400 truncate">{profile.bio}</div>}
             </div>
           </div>
