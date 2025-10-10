@@ -68,6 +68,7 @@ async function netlifyUserLoader({ request, context }: { request: Request; conte
 export const loader = withSecurity(netlifyUserLoader, {
   rateLimit: true,
   allowedMethods: ['GET'],
+  requireAuth: true,
 });
 
 async function netlifyUserAction({ request, context }: { request: Request; context: any }) {
@@ -146,4 +147,5 @@ async function netlifyUserAction({ request, context }: { request: Request; conte
 export const action = withSecurity(netlifyUserAction, {
   rateLimit: true,
   allowedMethods: ['POST'],
+  requireAuth: true,
 });
