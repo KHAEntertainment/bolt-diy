@@ -26,13 +26,17 @@ create table if not exists public.users (
 );
 alter table public.users enable row level security;
 
-create policy if not exists "users_select_own" on public.users
+drop policy if exists "users_select_own" on public.users;
+create policy "users_select_own" on public.users
 for select using (id = auth.uid());
-create policy if not exists "users_insert_self" on public.users
+drop policy if exists "users_insert_self" on public.users;
+create policy "users_insert_self" on public.users
 for insert with check (id = auth.uid());
-create policy if not exists "users_update_own" on public.users
+drop policy if exists "users_update_own" on public.users;
+create policy "users_update_own" on public.users
 for update using (id = auth.uid()) with check (id = auth.uid());
-create policy if not exists "users_delete_own" on public.users
+drop policy if exists "users_delete_own" on public.users;
+create policy "users_delete_own" on public.users
 for delete using (id = auth.uid());
 
 -- user_preferences (one row per user)
@@ -47,16 +51,21 @@ create table if not exists public.user_preferences (
 );
 alter table public.user_preferences enable row level security;
 
-create policy if not exists "prefs_select_own" on public.user_preferences
+drop policy if exists "prefs_select_own" on public.user_preferences;
+create policy "prefs_select_own" on public.user_preferences
 for select using (user_id = auth.uid());
-create policy if not exists "prefs_insert_own" on public.user_preferences
+drop policy if exists "prefs_insert_own" on public.user_preferences;
+create policy "prefs_insert_own" on public.user_preferences
 for insert with check (user_id = auth.uid());
-create policy if not exists "prefs_update_own" on public.user_preferences
+drop policy if exists "prefs_update_own" on public.user_preferences;
+create policy "prefs_update_own" on public.user_preferences
 for update using (user_id = auth.uid()) with check (user_id = auth.uid());
-create policy if not exists "prefs_delete_own" on public.user_preferences
+drop policy if exists "prefs_delete_own" on public.user_preferences;
+create policy "prefs_delete_own" on public.user_preferences
 for delete using (user_id = auth.uid());
 
-create trigger if not exists user_prefs_set_updated_at
+drop trigger if exists user_prefs_set_updated_at on public.user_preferences;
+create trigger user_prefs_set_updated_at
 before update on public.user_preferences
 for each row execute function public.set_updated_at();
 
@@ -70,16 +79,21 @@ create table if not exists public.provider_settings (
 );
 alter table public.provider_settings enable row level security;
 
-create policy if not exists "ps_select_own" on public.provider_settings
+drop policy if exists "ps_select_own" on public.provider_settings;
+create policy "ps_select_own" on public.provider_settings
 for select using (user_id = auth.uid());
-create policy if not exists "ps_insert_own" on public.provider_settings
+drop policy if exists "ps_insert_own" on public.provider_settings;
+create policy "ps_insert_own" on public.provider_settings
 for insert with check (user_id = auth.uid());
-create policy if not exists "ps_update_own" on public.provider_settings
+drop policy if exists "ps_update_own" on public.provider_settings;
+create policy "ps_update_own" on public.provider_settings
 for update using (user_id = auth.uid()) with check (user_id = auth.uid());
-create policy if not exists "ps_delete_own" on public.provider_settings
+drop policy if exists "ps_delete_own" on public.provider_settings;
+create policy "ps_delete_own" on public.provider_settings
 for delete using (user_id = auth.uid());
 
-create trigger if not exists provider_settings_set_updated_at
+drop trigger if exists provider_settings_set_updated_at on public.provider_settings;
+create trigger provider_settings_set_updated_at
 before update on public.provider_settings
 for each row execute function public.set_updated_at();
 
@@ -98,16 +112,21 @@ create table if not exists public.provider_tokens (
 alter table public.provider_tokens enable row level security;
 create index if not exists provider_tokens_user_provider_idx on public.provider_tokens (user_id, provider);
 
-create policy if not exists "pt_select_own" on public.provider_tokens
+drop policy if exists "pt_select_own" on public.provider_tokens;
+create policy "pt_select_own" on public.provider_tokens
 for select using (user_id = auth.uid());
-create policy if not exists "pt_insert_own" on public.provider_tokens
+drop policy if exists "pt_insert_own" on public.provider_tokens;
+create policy "pt_insert_own" on public.provider_tokens
 for insert with check (user_id = auth.uid());
-create policy if not exists "pt_update_own" on public.provider_tokens
+drop policy if exists "pt_update_own" on public.provider_tokens;
+create policy "pt_update_own" on public.provider_tokens
 for update using (user_id = auth.uid()) with check (user_id = auth.uid());
-create policy if not exists "pt_delete_own" on public.provider_tokens
+drop policy if exists "pt_delete_own" on public.provider_tokens;
+create policy "pt_delete_own" on public.provider_tokens
 for delete using (user_id = auth.uid());
 
-create trigger if not exists provider_tokens_set_updated_at
+drop trigger if exists provider_tokens_set_updated_at on public.provider_tokens;
+create trigger provider_tokens_set_updated_at
 before update on public.provider_tokens
 for each row execute function public.set_updated_at();
 
@@ -124,16 +143,21 @@ create table if not exists public.user_api_keys (
 alter table public.user_api_keys enable row level security;
 create index if not exists user_api_keys_user_provider_idx on public.user_api_keys (user_id, provider);
 
-create policy if not exists "uak_select_own" on public.user_api_keys
+drop policy if exists "uak_select_own" on public.user_api_keys;
+create policy "uak_select_own" on public.user_api_keys
 for select using (user_id = auth.uid());
-create policy if not exists "uak_insert_own" on public.user_api_keys
+drop policy if exists "uak_insert_own" on public.user_api_keys;
+create policy "uak_insert_own" on public.user_api_keys
 for insert with check (user_id = auth.uid());
-create policy if not exists "uak_update_own" on public.user_api_keys
+drop policy if exists "uak_update_own" on public.user_api_keys;
+create policy "uak_update_own" on public.user_api_keys
 for update using (user_id = auth.uid()) with check (user_id = auth.uid());
-create policy if not exists "uak_delete_own" on public.user_api_keys
+drop policy if exists "uak_delete_own" on public.user_api_keys;
+create policy "uak_delete_own" on public.user_api_keys
 for delete using (user_id = auth.uid());
 
-create trigger if not exists user_api_keys_set_updated_at
+drop trigger if exists user_api_keys_set_updated_at on public.user_api_keys;
+create trigger user_api_keys_set_updated_at
 before update on public.user_api_keys
 for each row execute function public.set_updated_at();
 
@@ -148,11 +172,14 @@ create table if not exists public.user_event_logs (
 alter table public.user_event_logs enable row level security;
 create index if not exists user_event_logs_user_ts_idx on public.user_event_logs (user_id, ts desc);
 
-create policy if not exists "uel_select_own" on public.user_event_logs
+drop policy if exists "uel_select_own" on public.user_event_logs;
+create policy "uel_select_own" on public.user_event_logs
 for select using (user_id = auth.uid());
-create policy if not exists "uel_insert_own" on public.user_event_logs
+drop policy if exists "uel_insert_own" on public.user_event_logs;
+create policy "uel_insert_own" on public.user_event_logs
 for insert with check (user_id = auth.uid());
-create policy if not exists "uel_delete_own" on public.user_event_logs
+drop policy if exists "uel_delete_own" on public.user_event_logs;
+create policy "uel_delete_own" on public.user_event_logs
 for delete using (user_id = auth.uid());
 
 commit;
