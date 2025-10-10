@@ -1,7 +1,14 @@
 import { json } from '@remix-run/cloudflare';
 import type { ActionFunctionArgs } from '@remix-run/cloudflare';
 import { withSecurity } from '~/lib/security';
-import { saveProviderToken, saveUserApiKey, saveUserPreferences, upsertUserFromAuth } from '~/lib/db/userData.server';
+import {
+  saveProviderToken,
+  saveUserApiKey,
+  saveUserPreferences,
+  upsertUserFromAuth,
+  saveProviderSettings,
+  updateUserProfile,
+} from '~/lib/db/userData.server';
 
 interface LegacyPayload {
   apiKeys?: Record<string, string>;
@@ -41,6 +48,18 @@ async function action({ request, context }: ActionFunctionArgs) {
       for (const t of payload.providerTokens) {
         if (t.token) await saveProviderToken(context, request, t.provider, t.token, { username: t.username, extra: t.extra });
       }
+    }
+
+    // Save provider settings
+    if (payload.providerSettings) {
+      for (const [provider, settings] of Object.entries(payload.providerSettings)) {
+        await saveProviderSettings(context, request, provider, settings as Record<string, unknown>);
+      }
+    }
+
+    // Save profile
+    if (payload.profile) {
+      await updateUserProfile(context, request, payload.profile);
     }
 
     return json({ migrated: true });

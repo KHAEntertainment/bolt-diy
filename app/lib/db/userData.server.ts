@@ -127,3 +127,56 @@ export async function getUserPreferences(context: AppLoadContext, request: Reque
   if (error && error.code !== 'PGRST116') throw error;
   return data;
 }
+
+export async function saveProviderSettings(
+  context: AppLoadContext,
+  request: Request,
+  provider: string,
+  settings: Record<string, unknown>,
+) {
+  const supabase = createSupabaseUserClient(request, context);
+  const { data: userRes } = await supabase.auth.getUser();
+  const user = userRes.user;
+  if (!user) throw new Error('Not authenticated');
+
+  const { error } = await supabase
+    .from('provider_settings')
+    .upsert(
+      {
+        user_id: user.id,
+        provider,
+        settings,
+      },
+      { onConflict: 'user_id,provider' },
+    );
+  if (error) throw error;
+}
+
+export async function getProviderSettings(context: AppLoadContext, request: Request) {
+  const supabase = createSupabaseUserClient(request, context);
+  const { data: userRes } = await supabase.auth.getUser();
+  const user = userRes.user;
+  if (!user) return {} as Record<string, unknown>;
+  const { data, error } = await supabase.from('provider_settings').select('provider, settings').eq('user_id', user.id);
+  if (error) throw error;
+  const map: Record<string, unknown> = {};
+  for (const row of data as Array<{ provider: string; settings: unknown }>) {
+    map[row.provider] = row.settings;
+  }
+  return map;
+}
+
+export async function updateUserProfile(
+  context: AppLoadContext,
+  request: Request,
+  profile: { display_name?: string | null; bio?: string | null; avatar_url?: string | null },
+) {
+  const supabase = createSupabaseUserClient(request, context);
+  const { data: userRes } = await supabase.auth.getUser();
+  const user = userRes.user;
+  if (!user) throw new Error('Not authenticated');
+  const { error } = await supabase
+    .from('users')
+    .upsert({ id: user.id, email: user.email, ...profile }, { onConflict: 'id' });
+  if (error) throw error;
+}
