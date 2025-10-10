@@ -48,3 +48,32 @@ export async function getCurrentUser(request: Request, context: AppLoadContext) 
   }
   return data.user ?? null;
 }
+
+export function getAccessTokenFromRequest(request: Request): string | null {
+  const cookieHeader = request.headers.get('Cookie');
+  return getCookie(ACCESS_TOKEN_COOKIE, cookieHeader);
+}
+
+export function createSupabaseUserClient(request: Request, context: AppLoadContext) {
+  const supabaseUrl = (context.cloudflare as any)?.env?.VITE_SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+  const supabaseAnonKey = (context.cloudflare as any)?.env?.VITE_SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
+  const accessToken = getAccessTokenFromRequest(request);
+
+  if (!supabaseUrl || !supabaseAnonKey) {
+    throw new Error('Supabase environment variables are not configured');
+  }
+
+  return createClient(supabaseUrl, supabaseAnonKey, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+    },
+    global: accessToken
+      ? {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        }
+      : undefined,
+  });
+}
