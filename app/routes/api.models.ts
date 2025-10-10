@@ -3,6 +3,7 @@ import { LLMManager } from '~/lib/modules/llm/manager';
 import type { ModelInfo } from '~/lib/modules/llm/types';
 import type { ProviderInfo } from '~/types/model';
 import { getApiKeysFromCookie, getProviderSettingsFromCookie } from '~/lib/api/cookies';
+import { getUserApiKey, getProviderSettings as getProviderSettingsDb } from '~/lib/db/userData.server';
 
 interface ModelsResponse {
   modelList: ModelInfo[];
@@ -53,10 +54,20 @@ export async function loader({
 }): Promise<Response> {
   const llmManager = LLMManager.getInstance(context.cloudflare?.env);
 
-  // Get client side maintained API keys and provider settings from cookies
+  // Prefer DB-stored keys/settings; fallback to cookies for backward compatibility
   const cookieHeader = request.headers.get('Cookie');
-  const apiKeys = getApiKeysFromCookie(cookieHeader);
-  const providerSettings = getProviderSettingsFromCookie(cookieHeader);
+  const cookieApiKeys = getApiKeysFromCookie(cookieHeader);
+  const cookieProviderSettings = getProviderSettingsFromCookie(cookieHeader);
+
+  const providerSettingsDb = await getProviderSettingsDb(context as any, request);
+  const providerSettings = { ...cookieProviderSettings, ...providerSettingsDb } as Record<string, any>;
+
+  // Build apiKeys map by merging DB values over cookies
+  const apiKeys: Record<string, string> = { ...cookieApiKeys };
+  for (const providerName of Object.keys(providerSettings)) {
+    const row = await getUserApiKey(context as any, request, providerName);
+    if (row?.api_key) apiKeys[providerName] = row.api_key;
+  }
 
   const { providers, defaultProvider } = getProviderInfo(llmManager);
 

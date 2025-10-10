@@ -1,18 +1,21 @@
 import { json } from '@remix-run/cloudflare';
 import { getApiKeysFromCookie } from '~/lib/api/cookies';
 import { withSecurity } from '~/lib/security';
+import { getProviderToken } from '~/lib/db/userData.server';
 
 async function supabaseUserLoader({ request, context }: { request: Request; context: any }) {
   try {
-    // Get API keys from cookies (server-side only)
-    const cookieHeader = request.headers.get('Cookie');
-    const apiKeys = getApiKeysFromCookie(cookieHeader);
-
-    // Try to get Supabase token from various sources
-    const supabaseToken =
-      apiKeys.VITE_SUPABASE_ACCESS_TOKEN ||
-      context?.cloudflare?.env?.VITE_SUPABASE_ACCESS_TOKEN ||
-      process.env.VITE_SUPABASE_ACCESS_TOKEN;
+    // Prefer per-user token from DB
+    const dbTokenRow = await getProviderToken(context, request, 'supabase');
+    let supabaseToken = dbTokenRow?.token as string | undefined;
+    if (!supabaseToken) {
+      const cookieHeader = request.headers.get('Cookie');
+      const apiKeys = getApiKeysFromCookie(cookieHeader);
+      supabaseToken =
+        apiKeys.VITE_SUPABASE_ACCESS_TOKEN ||
+        context?.cloudflare?.env?.VITE_SUPABASE_ACCESS_TOKEN ||
+        process.env.VITE_SUPABASE_ACCESS_TOKEN || '';
+    }
 
     if (!supabaseToken) {
       return json({ error: 'Supabase token not found' }, { status: 401 });
@@ -79,6 +82,7 @@ async function supabaseUserLoader({ request, context }: { request: Request; cont
 export const loader = withSecurity(supabaseUserLoader, {
   rateLimit: true,
   allowedMethods: ['GET'],
+  requireAuth: true,
 });
 
 async function supabaseUserAction({ request, context }: { request: Request; context: any }) {
@@ -86,15 +90,17 @@ async function supabaseUserAction({ request, context }: { request: Request; cont
     const formData = await request.formData();
     const action = formData.get('action');
 
-    // Get API keys from cookies (server-side only)
-    const cookieHeader = request.headers.get('Cookie');
-    const apiKeys = getApiKeysFromCookie(cookieHeader);
-
-    // Try to get Supabase token from various sources
-    const supabaseToken =
-      apiKeys.VITE_SUPABASE_ACCESS_TOKEN ||
-      context?.cloudflare?.env?.VITE_SUPABASE_ACCESS_TOKEN ||
-      process.env.VITE_SUPABASE_ACCESS_TOKEN;
+    // Prefer per-user token from DB
+    const dbTokenRow = await getProviderToken(context, request, 'supabase');
+    let supabaseToken = dbTokenRow?.token as string | undefined;
+    if (!supabaseToken) {
+      const cookieHeader = request.headers.get('Cookie');
+      const apiKeys = getApiKeysFromCookie(cookieHeader);
+      supabaseToken =
+        apiKeys.VITE_SUPABASE_ACCESS_TOKEN ||
+        context?.cloudflare?.env?.VITE_SUPABASE_ACCESS_TOKEN ||
+        process.env.VITE_SUPABASE_ACCESS_TOKEN || '';
+    }
 
     if (!supabaseToken) {
       return json({ error: 'Supabase token not found' }, { status: 401 });
@@ -196,4 +202,5 @@ async function supabaseUserAction({ request, context }: { request: Request; cont
 export const action = withSecurity(supabaseUserAction, {
   rateLimit: true,
   allowedMethods: ['POST'],
+  requireAuth: true,
 });

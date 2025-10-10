@@ -1,18 +1,22 @@
 import { json } from '@remix-run/cloudflare';
 import { getApiKeysFromCookie } from '~/lib/api/cookies';
 import { withSecurity } from '~/lib/security';
+import { getProviderToken } from '~/lib/db/userData.server';
 
 async function vercelUserLoader({ request, context }: { request: Request; context: any }) {
   try {
-    // Get API keys from cookies (server-side only)
-    const cookieHeader = request.headers.get('Cookie');
-    const apiKeys = getApiKeysFromCookie(cookieHeader);
-
-    // Try to get Vercel token from various sources
-    let vercelToken =
-      apiKeys.VITE_VERCEL_ACCESS_TOKEN ||
-      context?.cloudflare?.env?.VITE_VERCEL_ACCESS_TOKEN ||
-      process.env.VITE_VERCEL_ACCESS_TOKEN;
+    // Prefer per-user token from DB
+    const dbTokenRow = await getProviderToken(context, request, 'vercel');
+    let vercelToken = dbTokenRow?.token;
+    if (!vercelToken) {
+      // Fallback to cookies/env
+      const cookieHeader = request.headers.get('Cookie');
+      const apiKeys = getApiKeysFromCookie(cookieHeader);
+      vercelToken =
+        apiKeys.VITE_VERCEL_ACCESS_TOKEN ||
+        context?.cloudflare?.env?.VITE_VERCEL_ACCESS_TOKEN ||
+        process.env.VITE_VERCEL_ACCESS_TOKEN || '';
+    }
 
     // Also check for token in request headers (for direct API calls)
     if (!vercelToken) {
@@ -75,6 +79,7 @@ async function vercelUserLoader({ request, context }: { request: Request; contex
 export const loader = withSecurity(vercelUserLoader, {
   rateLimit: true,
   allowedMethods: ['GET'],
+  requireAuth: true,
 });
 
 async function vercelUserAction({ request, context }: { request: Request; context: any }) {
@@ -82,15 +87,18 @@ async function vercelUserAction({ request, context }: { request: Request; contex
     const formData = await request.formData();
     const action = formData.get('action');
 
-    // Get API keys from cookies (server-side only)
-    const cookieHeader = request.headers.get('Cookie');
-    const apiKeys = getApiKeysFromCookie(cookieHeader);
-
-    // Try to get Vercel token from various sources
-    let vercelToken =
-      apiKeys.VITE_VERCEL_ACCESS_TOKEN ||
-      context?.cloudflare?.env?.VITE_VERCEL_ACCESS_TOKEN ||
-      process.env.VITE_VERCEL_ACCESS_TOKEN;
+    // Prefer per-user token from DB
+    const dbTokenRow = await getProviderToken(context, request, 'vercel');
+    let vercelToken = dbTokenRow?.token;
+    if (!vercelToken) {
+      // Fallback to cookies/env
+      const cookieHeader = request.headers.get('Cookie');
+      const apiKeys = getApiKeysFromCookie(cookieHeader);
+      vercelToken =
+        apiKeys.VITE_VERCEL_ACCESS_TOKEN ||
+        context?.cloudflare?.env?.VITE_VERCEL_ACCESS_TOKEN ||
+        process.env.VITE_VERCEL_ACCESS_TOKEN || '';
+    }
 
     // Also check for token in request headers (for direct API calls)
     if (!vercelToken) {
@@ -158,4 +166,5 @@ async function vercelUserAction({ request, context }: { request: Request; contex
 export const action = withSecurity(vercelUserAction, {
   rateLimit: true,
   allowedMethods: ['POST'],
+  requireAuth: true,
 });

@@ -1,4 +1,5 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs } from '@remix-run/cloudflare';
+import { getCurrentUser } from '~/lib/auth/supabase.server';
 
 // Rate limiting store (in-memory for serverless environments)
 const rateLimitStore = new Map<string, { count: number; resetTime: number }>();
@@ -98,7 +99,7 @@ export function createSecurityHeaders() {
       "style-src 'self' 'unsafe-inline'", // Allow inline styles
       "img-src 'self' data: https: blob:", // Allow images from same origin, data URLs, and HTTPS
       "font-src 'self' data:", // Allow fonts from same origin and data URLs
-      "connect-src 'self' https://api.github.com https://api.netlify.com", // Allow connections to GitHub and Netlify APIs
+      "connect-src 'self' https://api.github.com https://api.netlify.com https://*.supabase.co https://api.supabase.com", // Allow connections to GitHub, Netlify, and Supabase APIs
       "frame-src 'none'", // Prevent iframe embedding
       "object-src 'none'", // Prevent object embedding
       "base-uri 'self'",
@@ -203,6 +204,26 @@ export function withSecurity<T extends (args: ActionFunctionArgs | LoaderFunctio
             'Retry-After': Math.ceil((rateLimitResult.resetTime! - Date.now()) / 1000).toString(),
             'X-RateLimit-Reset': rateLimitResult.resetTime!.toString(),
           },
+        });
+      }
+    }
+
+    // Enforce authentication when required
+    if (options.requireAuth) {
+      try {
+        // @ts-expect-error context is available in Remix Cloudflare runtime
+        const context = (args as any).context;
+        const user = await getCurrentUser(request, context);
+        if (!user) {
+          return new Response('Unauthorized', {
+            status: 401,
+            headers: createSecurityHeaders(),
+          });
+        }
+      } catch {
+        return new Response('Unauthorized', {
+          status: 401,
+          headers: createSecurityHeaders(),
         });
       }
     }
